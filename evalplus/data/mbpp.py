@@ -19,7 +19,7 @@ MBPP_OVERRIDE_PATH = os.environ.get("MBPP_OVERRIDE_PATH", None)
 
 def _ready_mbpp_plus_path(mini=False, noextreme=False, version="default") -> str:
     assert mini is False, "Mini version of MBPP+ is not available yet."
-
+    print(f"{MBPP_OVERRIDE_PATH=}")
     if MBPP_OVERRIDE_PATH:
         return MBPP_OVERRIDE_PATH
 

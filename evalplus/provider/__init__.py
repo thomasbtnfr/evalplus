@@ -27,6 +27,7 @@ def make_model(
     gptqmodel_backend: str = 'auto',
     gguf_file: str = None,
 ) -> DecoderBase:
+    print(f"{backend=}")
     if backend == "vllm":
         from evalplus.provider.vllm import VllmDecoder
 

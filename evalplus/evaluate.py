@@ -87,12 +87,14 @@ def check_correctness(
     identifier=None,
     min_time_limit: float = DEFAULT_MIN_TIME_LIMIT,
     gt_time_limit_factor: float = DEFAULT_GT_TIME_LIMIT_FACTOR,
+    syntax_ok: bool = False
 ) -> Dict[str, Result]:  # {...}, "base" | "plus" -> (status, details)
     ret = {
         "completion_id": completion_id,
         "task_id": problem["task_id"],
         "_identifier": identifier,
         "solution": solution,
+        "syntax_ok": syntax_ok
     }
     ret["base"] = untrusted_check(
         dataset,
@@ -231,6 +233,7 @@ def evaluate(
                     sample["_identifier"],
                     min_time_limit,
                     gt_time_limit_factor,
+                    sample['syntax_ok']
                 )
                 futures.append(executor.submit(check_correctness, *args))
                 completion_id[task_id] += 1
@@ -298,6 +301,7 @@ def evaluate(
                     {
                         "task_id": task_id,
                         "solution": res["solution"],
+                        "syntax_ok": res['syntax_ok'],
                         "base_status": base_stat,
                         "plus_status": plus_stat,
                         "base_fail_tests": base_fail_tests,
@@ -305,14 +309,25 @@ def evaluate(
                     }
                 )
 
+    # Calculate syntax_ok per pass@k.
+    syntax_ok_at_k = {}
+    for task_results in results["eval"].values():
+        for i, result in enumerate(task_results):
+            syntax_ok_at_k[f"syntax_ok@{i+1}"] = syntax_ok_at_k.get(f"syntax_ok@{i+1}", 0) + result["syntax_ok"]
+    for k, v in syntax_ok_at_k.items():
+        cprint(f"{k}:\t{v/len(results['eval']):.3f}", "blue")
+
     # Calculate pass@k.
     total = np.array([len(r) for r in results["eval"].values()])
     base_correct = []
+    syntax_correct = []
     new_correct = []
 
     for res in results["eval"].values():
         bc = sum([r["base_status"] == PASS for r in res])
+        sc = sum([r["syntax_ok"] == 1 for r in res])
         base_correct.append(bc)
+        syntax_correct.append(sc)
         if not base_only:
             new_correct.append(
                 sum(
@@ -323,10 +338,11 @@ def evaluate(
                 )
             )
     base_correct = np.array(base_correct)
-
+    syntax_correct = np.array(syntax_correct)
+    
     pass_at_k = {
         f"pass@{k}": estimate_pass_at_k(total, base_correct, k).mean()
-        for k in [1, 10, 100]
+        for k in [1, 2, 3, 5, 10, 100]
         if total.min() >= k
     }
     cprint(f"{dataset} (base tests)", "red")
@@ -334,11 +350,20 @@ def evaluate(
         cprint(f"{k}:\t{v:.3f}", "red")
     results["pass_at_k"] = {"base": pass_at_k}
 
+    syntax_pass_at_k = {
+        f"syntax_ok_pass@{k}": estimate_pass_at_k(total, syntax_correct, k).mean()
+        for k in [1, 2, 3, 5, 10, 100]
+        if total.min() >= k
+    }
+    for k, v in syntax_pass_at_k.items():
+        cprint(f"{k}:\t{v:.3f}", "red")
+    results["syntax_pass_at_k"] = syntax_pass_at_k
+
     if new_correct:
         cprint(f"{dataset}+ (base + extra tests)", "green")
         pass_at_k = {
             f"pass@{k}": estimate_pass_at_k(total, np.array(new_correct), k).mean()
-            for k in [1, 10, 100]
+            for k in [1, 2, 3, 5, 10, 100]
             if (total >= k).all()
         }
         for k, v in pass_at_k.items():

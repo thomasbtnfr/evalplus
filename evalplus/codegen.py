@@ -7,6 +7,7 @@ from evalplus.provider import DecoderBase, make_model
 from evalplus.sanitize import sanitize
 from evalplus.utils import progress
 
+from bu_llm.bottom_up.interface import rpn_to_infix
 
 def codegen(
     target_path: str,
@@ -57,7 +58,7 @@ def codegen(
                 )
 
             n_more_samples = n_samples
-            log = f"Codegen: {task_id} @ {model}"
+            log = f"Codegen: {task_id}"
             if resume and task2nexist.get(task_id, 0) > 0:
                 log += f" (resuming from {task2nexist[task_id]})"
                 n_more_samples -= task2nexist[task_id]
@@ -74,16 +75,24 @@ def codegen(
                 )
                 assert outputs, "No outputs from model!"
                 for impl in outputs:
-                    solution = prompt + impl if model.is_direct_completion() else impl
+                    print(impl)
+                    print('*'*20)
+                    impl = rpn_to_infix(code=impl, sep="\n")
+                    print(impl)
+                    if impl == "":
+                        print('FATALERROR')
+                    solution = prompt + impl if model.is_direct_completion() else impl  # true
                     sanitized_solution = sanitize(
                         solution, entrypoint=task["entry_point"]
                     )
+                    syntax_ok = int(not sanitized_solution.startswith('"""\n'))
+                    print('-'*100)
                     if target_path.endswith(".jsonl"):
                         # Writing the sanitized version
                         with open(target_path, "a") as f:
                             f.write(
                                 json.dumps(
-                                    {"task_id": task_id, "solution": sanitized_solution}
+                                    {"task_id": task_id, "solution": sanitized_solution, "syntax_ok": syntax_ok}
                                 )
                                 + "\n"
                             )

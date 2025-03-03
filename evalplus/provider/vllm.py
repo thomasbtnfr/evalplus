@@ -55,14 +55,17 @@ class VllmDecoder(DecoderBase):
         if do_sample:
             assert self.temperature > 0, "Temperature must be greater than 0!"
         batch_size = min(self.batch_size, num_samples)
-
-        prompt = (
-            prompt
-            if self.is_direct_completion()
-            else make_raw_chat_prompt(
-                prompt, self.instruction_prefix, self.response_prefix, self.tokenizer
-            )
-        )
+        # prompt = make_raw_chat_prompt(
+        #         prompt, self.instruction_prefix, self.response_prefix, self.tokenizer
+        #     )
+        prompt = f"""\
+{prompt.strip()}
+Bottom-up code:
+"""
+        # print(f"{self.instruction_prefix=}")
+        # print(f"{self.response_prefix=}")
+        # print(f"{self.is_direct_completion()=}")
+        print(f"{prompt=}")
 
         vllm_outputs = self.llm.generate(
             [prompt] * batch_size,
