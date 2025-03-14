@@ -30,7 +30,7 @@ class DecoderBase(ABC):
 
     @abstractmethod
     def codegen(
-        self, prompt: str, do_sample: bool = True, num_samples: int = 200
+        self, prompt: str, do_sample: bool = True, num_samples: int = 200, use_rpn_to_infix: bool = True
     ) -> List[str]:
         pass
 

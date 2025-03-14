@@ -7,7 +7,7 @@ from evalplus.provider import DecoderBase, make_model
 from evalplus.sanitize import sanitize
 from evalplus.utils import progress
 
-from bu_llm.bottom_up.interface import rpn_to_infix
+from polish_notation_converter.interface import rpn_to_infix
 
 def codegen(
     target_path: str,
@@ -17,6 +17,7 @@ def codegen(
     n_samples=1,
     id_range=None,
     resume=True,
+    use_rpn_to_infix=True,
 ):
     task2nexist = {}
     if resume and target_path.endswith(".jsonl") and os.path.isfile(target_path):
@@ -72,13 +73,15 @@ def codegen(
                     prompt,
                     do_sample=not greedy,
                     num_samples=n_samples - sidx,
+                    use_rpn_to_infix=use_rpn_to_infix,
                 )
                 assert outputs, "No outputs from model!"
                 for impl in outputs:
                     print(impl)
                     print('*'*20)
-                    impl = rpn_to_infix(code=impl, sep="\n")
-                    print(impl)
+                    if use_rpn_to_infix:
+                        impl = rpn_to_infix(code=impl, sep="\n")
+                        print(impl)
                     if impl == "":
                         print('FATALERROR')
                     solution = prompt + impl if model.is_direct_completion() else impl  # true
@@ -146,7 +149,8 @@ def run_codegen(
     enable_chunked_prefill: bool = False,
     dtype: str = "bfloat16",
     gptqmodel_backend: str = "auto",  # For GPTQModel
-    gguf_file: Optional[str] = None
+    gguf_file: Optional[str] = None,
+    use_rpn_to_infix: bool = False
 ):
     assert dataset in ["humaneval", "mbpp", "evalperf"], f"Invalid dataset {dataset}"
     assert evalperf_type is None or evalperf_type in [
@@ -260,6 +264,7 @@ def run_codegen(
         n_samples=n_samples,
         resume=resume,
         id_range=id_range,
+        use_rpn_to_infix=use_rpn_to_infix,
     )
 
     # force shutdown the model runner

@@ -140,6 +140,7 @@ def evaluate(
     version: str = "default",
     output_file: Optional[str] = None,
     gguf_file: Optional[str] = None,
+    use_rpn_to_infix: bool = True,
     **model_kwargs,
 ):
     if model_kwargs:
@@ -150,6 +151,7 @@ def evaluate(
         samples = run_codegen(
             dataset=dataset,
             gguf_file=gguf_file,
+            use_rpn_to_infix=use_rpn_to_infix,
             **model_kwargs,
         )
     assert samples is not None, "No samples provided"
