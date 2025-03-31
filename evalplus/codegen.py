@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Dict, List, Optional
 
 from evalplus.data import get_evalperf_data, get_human_eval_plus, get_mbpp_plus
@@ -18,6 +19,7 @@ def codegen(
     id_range=None,
     resume=True,
     use_rpn_to_infix=True,
+    separator="\n",
 ):
     task2nexist = {}
     if resume and target_path.endswith(".jsonl") and os.path.isfile(target_path):
@@ -73,14 +75,17 @@ def codegen(
                     prompt,
                     do_sample=not greedy,
                     num_samples=n_samples - sidx,
-                    use_rpn_to_infix=use_rpn_to_infix,
                 )
                 assert outputs, "No outputs from model!"
                 for impl in outputs:
-                    print(impl)
+                    print(f"{impl=}")
                     print('*'*20)
                     if use_rpn_to_infix:
-                        impl = rpn_to_infix(code=impl, sep="\n")
+                        def extract_rpn_content(text):
+                            match = re.search("```rpn\n(.*?)```", impl, re.DOTALL)
+                            return match.group(1) if match else None
+                        impl = extract_rpn_content(impl)
+                        impl = rpn_to_infix(code=impl, sep=separator)
                         print(impl)
                     if impl == "":
                         print('FATALERROR')
@@ -150,7 +155,8 @@ def run_codegen(
     dtype: str = "bfloat16",
     gptqmodel_backend: str = "auto",  # For GPTQModel
     gguf_file: Optional[str] = None,
-    use_rpn_to_infix: bool = False
+    use_rpn_to_infix: bool = False,
+    separator: str = "\n",
 ):
     assert dataset in ["humaneval", "mbpp", "evalperf"], f"Invalid dataset {dataset}"
     assert evalperf_type is None or evalperf_type in [
@@ -265,6 +271,7 @@ def run_codegen(
         resume=resume,
         id_range=id_range,
         use_rpn_to_infix=use_rpn_to_infix,
+        separator=separator,
     )
 
     # force shutdown the model runner

@@ -141,8 +141,11 @@ def evaluate(
     output_file: Optional[str] = None,
     gguf_file: Optional[str] = None,
     use_rpn_to_infix: bool = True,
+    separator: str = "\n",
     **model_kwargs,
 ):
+    separator = separator.encode().decode('unicode_escape')
+    print(f"{use_rpn_to_infix=}, {separator=}")
     if model_kwargs:
         # To suppress the warning of tokenizers
         os.environ["TOKENIZERS_PARALLELISM"] = os.environ.get(
@@ -152,6 +155,7 @@ def evaluate(
             dataset=dataset,
             gguf_file=gguf_file,
             use_rpn_to_infix=use_rpn_to_infix,
+            separator=separator,
             **model_kwargs,
         )
     assert samples is not None, "No samples provided"
